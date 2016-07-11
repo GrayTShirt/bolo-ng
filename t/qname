@@ -1,0 +1,25 @@
+#!/usr/bin/perl
+
+my $rc = 0;
+while (<DATA>) {
+	chomp;
+	s/\s*#\s*(.*)//;
+	my $comment = "$1 - " if $1;
+	my ($in, $want) = m/(.*?)\s+is\s+(.*)/;
+	chomp(my $out = qx(echo '$in' | ./qname 2>&1));
+	if ($out ne $want) {
+		print "FAIL: ${comment}[$in] did not yield [$want] (was [$out])\n";
+		$rc = 1;
+	} else {
+		print "PASS: ${comment}[$in] yields [$want]\n";
+	}
+}
+exit $rc;
+
+__DATA__
+a=b     is a=b          # base case
+abc=d   is abc=d        # multi-character key
+a=def   is a=def        # multi-character value
+abc=def is abc=def      # multi-character key and value
+a=b,c=d is a=b,c=d      # compound case (pre-ordered)
+c=d,a=b is a=b,c=d      # compound case re-ordered
