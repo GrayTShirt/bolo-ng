@@ -1,5 +1,6 @@
 #include <bolo.h>
 #include <stdlib.h>
+#include <stdint.h>
 #include <string.h>
 
 #include "debug.h"
