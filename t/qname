@@ -1,25 +1,64 @@
 #!/usr/bin/perl
+use strict;
+use warnings;
 
 my $rc = 0;
+sub ok($) {
+	print "ok ", $_[0], "\n";
+}
+sub notok($) {
+	print "not ok ", $_[0], "\n";
+	$rc = 1;
+}
+
 while (<DATA>) {
 	chomp;
 	s/\s*#\s*(.*)//;
-	my $comment = "$1 - " if $1;
-	my ($in, $want) = m/(.*?)\s+is\s+(.*)/;
-	chomp(my $out = qx(echo '$in' | ./qname 2>&1));
-	if ($out ne $want) {
-		print "FAIL: ${comment}[$in] did not yield [$want] (was [$out])\n";
-		$rc = 1;
+	my $comment = $1 ? "$1 - " : "";
+	my ($test) = m/([a-z]+)\s/ or next;
+	$comment = "[$test] $comment";
+
+	if ($test eq 'string') {
+		my ($in, $want) = m/$test\s+(.*?)\s+>>\s+(.*)/;
+		chomp(my $out = qx(echo '$in' | ./qname-${test} 2>&1));
+		if ($out ne $want) {
+			notok "${comment}[$in] did not yield [$want] (was [$out])";
+		} else {
+			ok "${comment}[$in] yields [$want]";
+		}
+
+	} elsif ($test =~ m/^(equiv|match)$/) {
+		my ($a, $rel, $b) = m/$test\s+(.*?)\s+([~!])\s+(.*)/;
+		chomp(my $err = qx(./qname-${test} '$a' '$rel' '$b' </dev/null 2>&1));
+		my $rc = $? >> 8;
+		if ($rc == 0) {
+			ok "${comment}$a $rel $b holds";
+		} elsif ($rc == 1) {
+			notok "${comment}$a $rel $b does not hold";
+		} else {
+			notok "${comment}$a $rel $b does not hold (rc=$rc; err=$err)";
+		}
+
 	} else {
-		print "PASS: ${comment}[$in] yields [$want]\n";
+		notok "invalid test: ${test}"
 	}
 }
 exit $rc;
 
 __DATA__
-a=b     is a=b          # base case
-abc=d   is abc=d        # multi-character key
-a=def   is a=def        # multi-character value
-abc=def is abc=def      # multi-character key and value
-a=b,c=d is a=b,c=d      # compound case (pre-ordered)
-c=d,a=b is a=b,c=d      # compound case re-ordered
+string a=b     >> a=b          # base case
+string abc=d   >> abc=d        # multi-character key
+string a=def   >> a=def        # multi-character value
+string abc=def >> abc=def      # multi-character key and value
+string a=b,c=d >> a=b,c=d      # compound case (pre-ordered)
+string c=d,a=b >> a=b,c=d      # compound case re-ordered
+
+equiv a=b     ~ a=b            # base case
+equiv a=b,c=d ~ a=b,c=d        # multiple keys
+equiv a=b     ! c=d            # negative base case
+
+match a=b     ~ a=b            # literal match
+#match a=b     ~ a=*            # partial match
+#match a=b,c=d ~ a=b,*          # wildcard match
+match a=b     ! a=c            # value mismatch
+match a=b     ! c=d            # key mismatch

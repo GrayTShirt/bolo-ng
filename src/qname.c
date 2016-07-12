@@ -306,6 +306,90 @@ bolo_qname_string(bolo_qname_t qn)
 			*fill++ = ',';
 		}
 	}
+	/* FIXME: trailing wildcard! */
 
 	return string;
+}
+
+int
+bolo_qname_equal(bolo_qname_t a, bolo_qname_t b)
+{
+	unsigned int i;
+	/* the invalid qualified name is never equivalent to anything */
+	if (a == INVALID_QNAME || b == INVALID_QNAME) {
+		return 0;
+	}
+
+	/* wildcard names only match other wildcard names */
+	if (a->wildcard != b->wildcard) {
+		return 0;
+	}
+
+	/* equivalent names have the same number of key=value pairs */
+	if (a->pairs != b->pairs) {
+		return 0;
+	}
+
+	/* pairs should be lexically ordered, so we can compare
+	   them sequentially for key- and value-equality */
+	for (i = 0; i < a->pairs; i++) {
+		if (!a->keys[i] || !b->keys[i]) {
+			return 0; /* it is an error to have NULL keys */
+		}
+		if (strcmp(a->keys[i], b->keys[i]) != 0) {
+			return 0; /* key mismatch */
+		}
+		if (!!a->values[i] != !!b->values[i]) {
+			return 0; /* value not present in both */
+		}
+		if (strcmp(a->values[i], b->values[i]) != 0) {
+			return 0; /* value mismatch */
+		}
+	}
+	return 1;
+}
+
+int
+bolo_qname_match(bolo_qname_t qn, bolo_qname_t pattern)
+{
+	unsigned int i, j;
+	int found;
+
+	/* the invalid qualified name never matches to anything */
+	if (qn == INVALID_QNAME || pattern == INVALID_QNAME) {
+		return 0;
+	}
+
+	for (i = 0; i < qn->pairs; i++) {
+		if (!qn->keys[i]) {
+			return 0; /* it is an error to have NULL keys */
+		}
+
+		/* see if the key is present in the pattern */
+		found = 0;
+		for (j = 0; j < pattern->pairs; j++) {
+			if (!pattern->keys[j]) {
+				return 0; /* it is an error to have NULL keys */
+			}
+			if (strcmp(qn->keys[i], pattern->keys[j]) == 0) {
+				found = 1;
+				break;
+			}
+		}
+		if (!found && !pattern->wildcard) {
+			return 0; /* pattern doesn't have this key, and isn't wildcard */
+		}
+
+		/* FIXME: need a better way of handling partial match (bitmap?) */
+		if (pattern->values[j] && strcmp(pattern->values[j], "*") == 0) {
+			continue;
+		}
+		if (!!qn->values[i] != !!pattern->values[i]) {
+			return 0; /* value not present in both */
+		}
+		if (strcmp(qn->values[i], pattern->values[j]) != 0) {
+			return 0; /* value mismatch */
+		}
+	}
+	return 1;
 }

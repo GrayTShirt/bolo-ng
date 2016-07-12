@@ -16,6 +16,10 @@ config.status
 Makefile
 config.h
 
+*.log
+*.trs
+
 /qname
+/qname-*
 
 /fuzz/findings
