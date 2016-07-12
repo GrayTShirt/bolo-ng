@@ -20,7 +20,7 @@ while (<DATA>) {
 
 	if ($test eq 'string') {
 		my ($in, $want) = m/$test\s+(.*?)\s+>>\s+(.*)/;
-		chomp(my $out = qx(echo '$in' | ./qname-${test} 2>&1));
+		chomp(my $out = qx(echo '$in' | ./t/contract/r/qname-${test} 2>&1));
 		if ($out ne $want) {
 			notok "${comment}[$in] did not yield [$want] (was [$out])";
 		} else {
@@ -29,7 +29,7 @@ while (<DATA>) {
 
 	} elsif ($test =~ m/^(equiv|match)$/) {
 		my ($a, $rel, $b) = m/$test\s+(.*?)\s+([~!])\s+(.*)/;
-		chomp(my $err = qx(./qname-${test} '$a' '$rel' '$b' </dev/null 2>&1));
+		chomp(my $err = qx(./t/contract/r/qname-${test} '$a' '$rel' '$b' </dev/null 2>&1));
 		my $rc = $? >> 8;
 		if ($rc == 0) {
 			ok "${comment}$a $rel $b holds";

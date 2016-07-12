@@ -11,20 +11,20 @@ AM_CPPFLAGS = -I$(top_srcdir)/include
 
 ############################################################
 
-TESTS = t/qname
+TESTS = t/contract/qname
 
-check_PROGRAMS = qname-string \
-                 qname-equiv \
-                 qname-match
+check_PROGRAMS = t/contract/r/qname-string \
+                 t/contract/r/qname-equiv \
+                 t/contract/r/qname-match
 
-qname_string_SOURCES = src/qname.c \
-                       t/bin/qname-string.c
+t_contract_r_qname_string_SOURCES = src/qname.c \
+                                    t/contract/r/qname-string.c
 
-qname_equiv_SOURCES  = src/qname.c \
-                       t/bin/qname-equiv.c
+t_contract_r_qname_equiv_SOURCES  = src/qname.c \
+                                    t/contract/r/qname-equiv.c
 
-qname_match_SOURCES  = src/qname.c \
-                       t/bin/qname-match.c
+t_contract_r_qname_match_SOURCES  = src/qname.c \
+                                    t/contract/r/qname-match.c
 
 ############################################################
 

@@ -20,6 +20,9 @@ config.h
 *.trs
 
 /qname
-/qname-*
+
+/t/contract/r/qname-equiv
+/t/contract/r/qname-match
+/t/contract/r/qname-string
 
 /fuzz/findings
