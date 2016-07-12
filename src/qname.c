@@ -66,16 +66,15 @@ bolo_qname_parse(const char *string)
 		return INVALID_QNAME;
 	}
 
-	qn = malloc(sizeof(struct __bolo_qname)
-	          + strlen(string) /* flyweight       */
-	          + 1);            /* NULL-terminator */
+	qn = calloc(1, sizeof(struct __bolo_qname)
+	             + strlen(string) /* flyweight       */
+	             + 1);            /* NULL-terminator */
 	if (!qn) {
 		debugf("alloc(%lu + %lu + %lu) [=%lu] failed\n", sizeof(struct __bolo_qname), strlen(string), 1LU,
 				sizeof(struct __bolo_qname) + strlen(string) + 1LU);
 		return INVALID_QNAME;
 	}
 
-	qn->pairs = 0;
 	escaped = 0;
 	fsm = BOLO_PFSM_K1;
 	fill = qn->flyweight;
@@ -91,6 +90,7 @@ bolo_qname_parse(const char *string)
 				qn->keys[qn->pairs] = fill;
 			case BOLO_PFSM_K2:
 				*fill++ = *p;
+				qn->length++;
 				break;
 
 			case BOLO_PFSM_V1:
@@ -98,6 +98,7 @@ bolo_qname_parse(const char *string)
 				qn->values[qn->pairs] = fill;
 			case BOLO_PFSM_V2:
 				*fill++ = *p;
+				qn->length++;
 				break;
 
 			default:
@@ -114,11 +115,13 @@ bolo_qname_parse(const char *string)
 			if (s_is_character(*p)) {
 				qn->keys[qn->pairs] = fill;
 				*fill++ = *p;
+				qn->length++;
 				fsm = BOLO_PFSM_K2;
 
 			} else if (s_is_wildcard(*p)) {
 				qn->keys[qn->pairs] = fill;
 				*fill++ = *p;
+				qn->length++;
 				fsm = BOLO_PFSM_M;
 
 			} else {
@@ -132,10 +135,12 @@ bolo_qname_parse(const char *string)
 		case BOLO_PFSM_K2:
 			if (*p == '=') {
 				*fill++ = '\0';
+				qn->length++;
 				fsm = BOLO_PFSM_V1;
 
 			} else if (*p == ',') {
 				*fill++ = '\0';
+				qn->length++;
 				qn->values[qn->pairs] = NULL;
 				qn->pairs++;
 				if (qn->pairs >= MAX_PAIRS) {
@@ -147,6 +152,7 @@ bolo_qname_parse(const char *string)
 
 			} else if (s_is_character(*p)) {
 				*fill++ = *p;
+				qn->length++;
 
 			} else {
 				free(qn);
@@ -160,15 +166,18 @@ bolo_qname_parse(const char *string)
 			if (s_is_character(*p)) {
 				qn->values[qn->pairs] = fill;
 				*fill++ = *p;
+				qn->length++;
 				fsm = BOLO_PFSM_V2;
 
 			} else if (s_is_wildcard(*p)) {
 				qn->values[qn->pairs] = fill;
 				*fill++ = *p;
+				qn->length++;
 				fsm = BOLO_PFSM_M;
 
 			} else if (*p == ',') {
 				*fill++ = '\0';
+				qn->length++;
 				qn->pairs++;
 				if (qn->pairs >= MAX_PAIRS) {
 					free(qn);
@@ -188,6 +197,7 @@ bolo_qname_parse(const char *string)
 		case BOLO_PFSM_V2:
 			if (*p == ',') {
 				*fill++ = '\0';
+				qn->length++;
 				qn->pairs++;
 				if (qn->pairs >= MAX_PAIRS) {
 					free(qn);
@@ -198,6 +208,7 @@ bolo_qname_parse(const char *string)
 
 			} else if (s_is_character(*p)) {
 				*fill++ = *p;
+				qn->length++;
 
 			} else {
 				free(qn);
@@ -210,6 +221,7 @@ bolo_qname_parse(const char *string)
 		case BOLO_PFSM_M:
 			if (*p == ',') {
 				*fill++ = '\0';
+				qn->length++;
 				qn->pairs++;
 				if (qn->pairs >= MAX_PAIRS) {
 					free(qn);
@@ -264,7 +276,7 @@ bolo_qname_free(bolo_qname_t qn)
 char *
 bolo_qname_string(bolo_qname_t qn)
 {
-	char *string, *fill;
+	char *string, *fill, *tombstone;
 	const char *p;
 	int i;
 
@@ -280,13 +292,14 @@ bolo_qname_string(bolo_qname_t qn)
 	}
 
 	fill = string;
+	tombstone = fill + qn->length;
 	for (i = 0; i < qn->pairs && i < MAX_PAIRS; i++) {
 		p = qn->keys[i];
-		while (*p)
+		while (*p && fill != tombstone)
 			*fill++ = *p++;
 		if ( (p = qn->values[i]) != NULL) {
 			*fill++ = '=';
-			while (*p)
+			while (*p && fill != tombstone)
 				*fill++ = *p++;
 		}
 		if (i + 1 != qn->pairs) {
