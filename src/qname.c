@@ -14,6 +14,7 @@ struct __bolo_qname {
 
 	char *keys[MAX_PAIRS];    /* keys (pointers into flyweight)        */
 	char *values[MAX_PAIRS];  /* values (pointers into flyweight)      */
+	int   partial[MAX_PAIRS]; /* key is a '*' match (1) or not (0)     */
 
 	char flyweight[];         /* munged copy of original qn string     */
 };
@@ -120,6 +121,7 @@ bolo_qname_parse(const char *string)
 
 			} else if (s_is_wildcard(*p)) {
 				qn->keys[qn->pairs] = fill;
+				qn->wildcard = 1;
 				*fill++ = *p;
 				qn->length++;
 				fsm = BOLO_PFSM_M;
@@ -171,6 +173,7 @@ bolo_qname_parse(const char *string)
 
 			} else if (s_is_wildcard(*p)) {
 				qn->values[qn->pairs] = fill;
+				qn->partial[qn->pairs] = 1;
 				*fill++ = *p;
 				qn->length++;
 				fsm = BOLO_PFSM_M;
@@ -250,12 +253,15 @@ bolo_qname_parse(const char *string)
 	case BOLO_PFSM_K2:
 	case BOLO_PFSM_V1:
 	case BOLO_PFSM_V2:
-		qn->pairs++;
+	case BOLO_PFSM_M:
+		if (!qn->wildcard) {
+			qn->pairs++;
+		}
 		break;
 
 	default:
 		free(qn);
-		debugf("invalid final FSM state [%d]", fsm);
+		debugf("invalid final FSM state [%d]\n", fsm);
 		return INVALID_QNAME;
 	}
 
@@ -306,7 +312,12 @@ bolo_qname_string(bolo_qname_t qn)
 			*fill++ = ',';
 		}
 	}
-	/* FIXME: trailing wildcard! */
+	if (qn->wildcard) {
+		if (qn->pairs != 0) {
+			*fill++ = ',';
+		}
+		*fill++ = '*';
+	}
 
 	return string;
 }
@@ -360,36 +371,43 @@ bolo_qname_match(bolo_qname_t qn, bolo_qname_t pattern)
 		return 0;
 	}
 
-	for (i = 0; i < qn->pairs; i++) {
-		if (!qn->keys[i]) {
+	/* pattern constraints must be met first */
+	for (i = 0; i < pattern->pairs; i++) {
+		if (!pattern->keys[i]) {
 			return 0; /* it is an error to have NULL keys */
 		}
 
-		/* see if the key is present in the pattern */
+		/* see if the key is present in the qn */
 		found = 0;
-		for (j = 0; j < pattern->pairs; j++) {
-			if (!pattern->keys[j]) {
+		for (j = 0; j < qn->pairs; j++) {
+			if (!qn->keys[j]) {
 				return 0; /* it is an error to have NULL keys */
 			}
-			if (strcmp(qn->keys[i], pattern->keys[j]) == 0) {
+			if (strcmp(pattern->keys[i], qn->keys[j]) == 0) {
 				found = 1;
 				break;
 			}
 		}
-		if (!found && !pattern->wildcard) {
-			return 0; /* pattern doesn't have this key, and isn't wildcard */
+		if (!found) {
+			return 0; /* pattern constraint not met */
 		}
 
-		/* FIXME: need a better way of handling partial match (bitmap?) */
-		if (pattern->values[j] && strcmp(pattern->values[j], "*") == 0) {
+		if (pattern->partial[i]) {
 			continue;
 		}
-		if (!!qn->values[i] != !!pattern->values[i]) {
+		if (!!qn->values[j] != !!pattern->values[i]) {
 			return 0; /* value not present in both */
 		}
-		if (strcmp(qn->values[i], pattern->values[j]) != 0) {
+		if (strcmp(qn->values[j], pattern->values[i]) != 0) {
 			return 0; /* value mismatch */
 		}
+	}
+
+	/* if the length of the name and the pattern don't match,
+	   the name must be longer, and we need to check if the
+	   pattern is a wildcard or not */
+	if (qn->pairs != pattern->pairs && !pattern->wildcard) {
+		return 0;
 	}
 	return 1;
 }

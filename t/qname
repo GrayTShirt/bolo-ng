@@ -52,13 +52,22 @@ string a=def   >> a=def        # multi-character value
 string abc=def >> abc=def      # multi-character key and value
 string a=b,c=d >> a=b,c=d      # compound case (pre-ordered)
 string c=d,a=b >> a=b,c=d      # compound case re-ordered
+string *       >> *            # single wildcard
+string a=*     >> a=*          # partial match
+string a=*,c=d >> a=*,c=d      # interior partial match
+string a=b,*   >> a=b,*        # trailing wildcard
 
 equiv a=b     ~ a=b            # base case
 equiv a=b,c=d ~ a=b,c=d        # multiple keys
 equiv a=b     ! c=d            # negative base case
 
 match a=b     ~ a=b            # literal match
-#match a=b     ~ a=*            # partial match
-#match a=b,c=d ~ a=b,*          # wildcard match
+match a=b     ~ a=*            # partial match
+match a=b,c=d ~ a=*,c=d        # interior partial match
+match a=b,c=d ~ a=b,*          # wildcard match
+match a=b,c=d ~ a=*,*          # wildcard + partial match
+match a=b,c=d ! a=*            # partial match scope
 match a=b     ! a=c            # value mismatch
 match a=b     ! c=d            # key mismatch
+match a=b     ! c=d,*          # pattern constraint
+match a=b     ~ a=b,*          # superfluous wildcard
