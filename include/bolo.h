@@ -48,16 +48,16 @@ int
 bolo_qname_equal(bolo_qname_t a, bolo_qname_t b);
 
 /**
-  Returns non-zero if the first qualified name (`n`) matches the
+  Returns non-zero if the first qualified name (`qn`) matches the
   second qualified name (`pattern`), honoring wildcard semantics
   in the pattern name.
 
-  Returns 0 if `n` does not match `pattern`.
+  Returns 0 if `qn` does not match `pattern`.
 
   The value INVALID_QNAME will never match any other name,
   even another INVALID_QNAME.
  **/
 int
-bolo_qname_match(bolo_qname_t n, bolo_qname_t pattern);
+bolo_qname_match(bolo_qname_t qn, bolo_qname_t pattern);
 
 #endif
