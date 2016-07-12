@@ -61,6 +61,7 @@ bolo_qname_parse(const char *string)
 	char *fill;         /* pointer for filling flyweight             */
 	int fsm;            /* parser finite state machine state         */
 	int escaped;        /* last token was backslash (1) or not (0)   */
+	int i;              /* for iterating over pairs in post-process  */
 
 	if (!string) {
 		debugf("invalid input string (%p / %s)\n", string, string);
@@ -263,6 +264,59 @@ bolo_qname_parse(const char *string)
 		free(qn);
 		debugf("invalid final FSM state [%d]\n", fsm);
 		return INVALID_QNAME;
+	}
+
+	/* remove trailing and leading whitespace from keys
+	   and values, adjusting length as necessary */
+	for (i = 0; i < qn->pairs; i++) {
+
+		fill = qn->keys[i];
+		if (fill) {
+			/* leading space on key */
+			while (*fill == ' ') {
+				fill++;
+				qn->length--;
+			}
+			if (!*fill) {
+				/* N.B.: this should never happen unless there is a bug in the
+				         K1 -> K2 (on whitespace) state transition in the FSM,
+				         but it doesn't hurt to be cautious. */
+				free(qn);
+				debugf("key %d was pure whitespace\n", i+1);
+				return INVALID_QNAME;
+			}
+			qn->keys[i] = fill;
+
+			/* trailing space on key */
+			while (*fill)
+				fill++;
+			fill--;
+			while (fill > qn->keys[i] && *fill == ' ') {
+				*fill-- = '\0';
+				qn->length--;
+			}
+		}
+
+		fill = qn->values[i];
+		if (fill) {
+			/* leading space on value */
+			while (*fill == ' ') {
+				fill++;
+				qn->length--;
+			}
+			qn->values[i] = fill;
+
+			if (*fill) {
+				/* trailing space on value */
+				while (*fill)
+					fill++;
+				fill--;
+				while (fill > qn->values[i] && *fill == ' ') {
+					*fill-- = '\0';
+					qn->length--;
+				}
+			}
+		}
 	}
 
 	/* sort the key/value pairs lexcially by key, to make

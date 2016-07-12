@@ -46,16 +46,20 @@ while (<DATA>) {
 exit $rc;
 
 __DATA__
-string a=b     >> a=b          # base case
-string abc=d   >> abc=d        # multi-character key
-string a=def   >> a=def        # multi-character value
-string abc=def >> abc=def      # multi-character key and value
-string a=b,c=d >> a=b,c=d      # compound case (pre-ordered)
-string c=d,a=b >> a=b,c=d      # compound case re-ordered
-string *       >> *            # single wildcard
-string a=*     >> a=*          # partial match
-string a=*,c=d >> a=*,c=d      # interior partial match
-string a=b,*   >> a=b,*        # trailing wildcard
+string a=b       >> a=b        # base case
+string abc=d     >> abc=d      # multi-character key
+string a=def     >> a=def      # multi-character value
+string abc=def   >> abc=def    # multi-character key and value
+string a=b,c=d   >> a=b,c=d    # compound case (pre-ordered)
+string c=d,a=b   >> a=b,c=d    # compound case re-ordered
+string *         >> *          # single wildcard
+string a=*       >> a=*        # partial match
+string a=*,c=d   >> a=*,c=d    # interior partial match
+string a=b,*     >> a=b,*      # trailing wildcard
+string a = b     >> a=b        # key/value delimiter whitespace
+string a   =  b  >> a=b        # repeated whitespace
+string a=b , c=d >> a=b,c=d    # pair delimiter whitespace
+string a=b c,d=e >> a=b c,d=e  # whitespace preservation
 
 equiv a=b     ~ a=b            # base case
 equiv a=b,c=d ~ a=b,c=d        # multiple keys
