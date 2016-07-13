@@ -2,6 +2,7 @@
 #define BOLO_H
 
 #include <sys/types.h>
+#include <stdio.h>
 
 typedef struct __bolo_qname *bolo_qname_t;
 #define INVALID_QNAME ((bolo_qname_t)(0))
@@ -100,6 +101,9 @@ bolo_message_unpack(const void *buf, size_t n, size_t *left);
 
 int
 bolo_message_valid(bolo_message_t m);
+
+void
+bolo_message_fdump(FILE* io, bolo_message_t m);
 
 unsigned int
 bolo_message_version(bolo_message_t m);

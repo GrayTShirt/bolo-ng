@@ -311,3 +311,84 @@ bolo_message_valid(bolo_message_t m)
 
 	return 1;
 }
+
+static const char* OPCODE_NAMES[] = {
+	"HEARTBEAT",
+	"SUBMIT",
+	"BROADCAST",
+	"FORGET",
+	"REPLAY",
+	"SUBSCRIBE",
+	NULL
+};
+static const char*
+s_opcode_name(unsigned int opcode)
+{
+	if (opcode > BOLO_OPCODE_SUBSCRIBE) {
+		return "<unknown>";
+	}
+	return OPCODE_NAMES[opcode];
+}
+
+static char binfmt[65];
+static const char*
+s_in_binary(unsigned long i, int size)
+{
+	int off = 24;
+
+	if (size > 4) {
+		memcpy(binfmt, "<bad size>", 11);
+		return binfmt;
+	}
+
+	binfmt[64] = '\0';
+	while (size-- > 0) {
+		binfmt[off + 0] = (i & 0x01) ? '1' : '0';
+		binfmt[off + 1] = (i & 0x02) ? '1' : '0';
+		binfmt[off + 2] = (i & 0x04) ? '1' : '0';
+		binfmt[off + 3] = (i & 0x08) ? '1' : '0';
+		binfmt[off + 4] = (i & 0x10) ? '1' : '0';
+		binfmt[off + 5] = (i & 0x20) ? '1' : '0';
+		binfmt[off + 6] = (i & 0x40) ? '1' : '0';
+		binfmt[off + 7] = (i & 0x80) ? '1' : '0';
+		off -= 8;
+		i = i >> 8;
+	}
+	return binfmt + off;
+}
+
+void
+bolo_message_fdump(FILE *io, bolo_message_t m)
+{
+	int i;
+	bolo_frame_t f;
+
+	fprintf(io, "version: %d\n"
+	            "opcode:  %d [%s]\n"
+	            "flags:   %02x (%sb)\n"
+	            "payload: %04x (%sb)\n",
+			m->version,
+			m->opcode,  s_opcode_name(m->opcode),
+			m->flags,   s_in_binary(m->flags,   sizeof(m->flags)),
+			m->payload, s_in_binary(m->payload, sizeof(m->payload)));
+
+	if (m->payload & BOLO_PAYLOAD_SAMPLE) fprintf(io, "          - SAMPLE (%04x)\n", BOLO_PAYLOAD_SAMPLE);
+	if (m->payload & BOLO_PAYLOAD_TALLY)  fprintf(io, "          - TALLY  (%04x)\n", BOLO_PAYLOAD_TALLY);
+	if (m->payload & BOLO_PAYLOAD_DELTA)  fprintf(io, "          - DELTA  (%04x)\n", BOLO_PAYLOAD_DELTA);
+	if (m->payload & BOLO_PAYLOAD_STATE)  fprintf(io, "          - STATE  (%04x)\n", BOLO_PAYLOAD_STATE);
+	if (m->payload & BOLO_PAYLOAD_EVENT)  fprintf(io, "          - EVENT  (%04x)\n", BOLO_PAYLOAD_EVENT);
+	if (m->payload & BOLO_PAYLOAD_FACT)   fprintf(io, "          - FACT   (%04x)\n", BOLO_PAYLOAD_FACT);
+
+	fprintf(io, "frames:  %d\n", m->nframes);
+	for (f = m->frames; f; f = f->next, i++) {
+		fprintf(io, "  [% 2d] ", i);
+		switch (f->type) {
+		case BOLO_FRAME_UINT:    fprintf(io, "UINT/%d\n",   f->length);
+		case BOLO_FRAME_FLOAT:   fprintf(io, "FLOAT/%d\n",  f->length);
+		case BOLO_FRAME_STRING:  fprintf(io, "STRING/%d\n", f->length);
+		case BOLO_FRAME_TSTAMP:  fprintf(io, "TSTAMP/%d\n", f->length);
+		case BOLO_FRAME_NIL:     fprintf(io, "NIL/%d\n",    f->length);
+		default: fprintf(io, "\?\?\?(%02x)/%d\n", f->type, f->length);
+		}
+	}
+}
