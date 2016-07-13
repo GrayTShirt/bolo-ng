@@ -36,6 +36,13 @@ src/qname_chars.inc: src/qname_chars.tbl $(TABLEGEN)
 src/qname.o: src/qname.c $(CORE_H) src/qname_chars.inc
 	$(CC) $(CFLAGS) -o $@ -c $<
 
+# source files that comprise the Message implementation.
+MSG_SRC  := src/msg.c
+MSG_OBJ  := $(MSG_SRC:.c=.o)
+MSG_FUZZ := $(MSG_SRC:.c=.fuzz.o)
+CLEAN_FILES += $(MSG_OBJ) $(MSG_FUZZ)
+
+
 # scripts that perform Contract Testing.
 CONTRACT_TEST_SCRIPTS := t/contract/qname
 
@@ -52,11 +59,13 @@ t/contract/r/qname-match:  t/contract/r/qname-match.o  $(QNAME_OBJ)
 
 
 # binaries that the Fuzz Tests run.
-FUZZ_TEST_BINS := t/fuzz/r/qname
+FUZZ_TEST_BINS := t/fuzz/r/qname \
+                  t/fuzz/r/msg
 CLEAN_FILES   += $(FUZZ_TEST_BINS)
 
 fuzz-tests: $(FUZZ_TEST_BINS)
 t/fuzz/r/qname: t/fuzz/r/qname.o $(QNAME_FUZZ)
+t/fuzz/r/msg:   t/fuzz/r/msg.o   $(MSG_FUZZ)
 
 
 tests: $(CONTRACT_TEST_BINS)

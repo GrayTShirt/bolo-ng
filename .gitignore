@@ -25,4 +25,5 @@ config.h
 /t/contract/r/qname-string
 
 /t/fuzz/r/qname
+/t/fuzz/r/msg
 /t/fuzz/findings
