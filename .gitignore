@@ -13,7 +13,6 @@ coverage
 configure
 config.log
 config.status
-Makefile
 config.h
 
 *.log
@@ -24,5 +23,7 @@ config.h
 /t/contract/r/qname-equiv
 /t/contract/r/qname-match
 /t/contract/r/qname-string
+
+/t/fuzz/r/qname
 
 /fuzz/findings
