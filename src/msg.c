@@ -2,6 +2,7 @@
 #include <assert.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <string.h>
 
 struct __bolo_frame {
 	unsigned char  type;   /* type of payload (BOLO_FRAME_*) */
@@ -27,6 +28,7 @@ struct __bolo_message {
 	unsigned short  payload; /* BOLO_PAYLOAD_* constant(s)    */
 
 	int complete;            /* do we have all the frames?    */
+	int nframes;             /* how many frames do we have?   */
 	bolo_frame_t frames;     /* constituent MSG FRAMEs        */
 	bolo_frame_t last;       /* helper pointer to last frame  */
 };
@@ -94,6 +96,9 @@ bolo_message_unpack(const void *buf, size_t n, size_t *left)
 
 		f->type   = extract_frame_type(buf);
 		f->length = len;
+		memmove(f->data, buf + 2, len);
+
+		m->nframes++;
 		if (!m->frames) {
 			m->frames = f;
 			m->last   = f;
@@ -108,4 +113,201 @@ bolo_message_unpack(const void *buf, size_t n, size_t *left)
 	}
 
 	return m;
+}
+
+#define s_frame_valid(f,t,l) ((f) && (f)->type == (t) && ((t) == BOLO_FRAME_STRING || (f)->length == l))
+
+static bolo_frame_t
+s_nth_frame(bolo_message_t m, int n)
+{
+	bolo_frame_t f;
+
+	f = m->frames;
+	while (n > 0 && f) {
+		f = f->next;
+		n--;
+	}
+	return f;
+}
+
+/* hamming weight algorithm, in 8-bit */
+static unsigned char
+bits8(unsigned char b)
+{
+	b = b - ((b >> 1) & 0x55);
+	b = (b & 0x33) + ((b >> 2) & 0x33);
+	return ((b + (b >> 4)) & 0x0f);
+}
+
+int
+bolo_message_valid(bolo_message_t m)
+{
+	int i;
+	unsigned int type, len;
+
+	if (!m) {
+		return 0;
+	}
+
+	if (m->version != BOLO_PROTOCOL_V1) {
+		return 0;
+	}
+
+#define requires_single_payload() \
+	do { if (bits8(m->payload) != 1) return 0; } while (0)
+#define requires_empty_payload() \
+	do { if (m->payload != 0) return 0; } while (0)
+#define requires_one_or_more_payloads() \
+	do { if (m->payload == 0) return 0; } while (0)
+#define requires_payloads(p) \
+	do { if (m->payload & p != m->payload) return 0; } while (0)
+
+#define requires_exact_frame_count(n) \
+	do { if (m->nframes != (n)) return 0; } while (0)
+#define requires_min_frame_count(n) \
+	do { if (m->nframes < (n)) return 0; } while (0)
+#define requires_min_max_frame_count(a,b) \
+	do { if (m->nframes < (a) || m->nframes > (b)) return 0; } while (0)
+#define requires_frame(n,t,l) \
+	do { if (!s_frame_valid(s_nth_frame(m, (n)), (t), (l))) return 0; } while (0)
+
+	switch (m->opcode) {
+	case BOLO_OPCODE_HEARTBEAT:
+		requires_empty_payload();      /* per RFC-TSDP $4.3.1.1 */
+		requires_exact_frame_count(2); /* per RFC-TSDP $4.3.1.2 */
+		requires_frame(0, BOLO_FRAME_TSTAMP, 64);
+		requires_frame(1, BOLO_FRAME_UINT,   64);
+		return 1;
+
+	case BOLO_OPCODE_SUBMIT:
+		requires_single_payload();
+		switch (m->payload) {
+		case BOLO_PAYLOAD_SAMPLE:
+			requires_min_frame_count(3);
+			requires_frame(0, BOLO_FRAME_STRING, 0);
+			requires_frame(1, BOLO_FRAME_TSTAMP, 64);
+			for (i = 2; i < m->nframes; i++) {
+				requires_frame(i, BOLO_FRAME_FLOAT, 64);
+			}
+			return 1;
+
+		case BOLO_PAYLOAD_TALLY:
+			requires_min_max_frame_count(2, 3);
+			requires_frame(0, BOLO_FRAME_STRING, 0);
+			requires_frame(1, BOLO_FRAME_TSTAMP, 64);
+			if (m->nframes == 3) {
+				requires_frame(2, BOLO_FRAME_UINT, 64);
+			}
+			return 1;
+
+		case BOLO_PAYLOAD_DELTA:
+			requires_exact_frame_count(3);
+			requires_frame(0, BOLO_FRAME_STRING, 0);
+			requires_frame(1, BOLO_FRAME_TSTAMP, 64);
+			requires_frame(2, BOLO_FRAME_FLOAT,  64);
+			return 1;
+
+		case BOLO_PAYLOAD_STATE:
+			requires_min_max_frame_count(3, 4);
+			requires_frame(0, BOLO_FRAME_STRING, 0);
+			requires_frame(1, BOLO_FRAME_TSTAMP, 64);
+			requires_frame(2, BOLO_FRAME_UINT,   32);
+			if (m->nframes == 4) {
+				requires_frame(3, BOLO_FRAME_STRING, 0);
+			}
+			return 1;
+
+		case BOLO_PAYLOAD_EVENT:
+			requires_exact_frame_count(3);
+			requires_frame(0, BOLO_FRAME_STRING, 0);
+			requires_frame(1, BOLO_FRAME_TSTAMP, 64);
+			requires_frame(2, BOLO_FRAME_STRING, 0);
+			return 1;
+
+		case BOLO_PAYLOAD_FACT:
+			requires_exact_frame_count(2);
+			requires_frame(0, BOLO_FRAME_STRING, 0);
+			requires_frame(1, BOLO_FRAME_STRING, 0);
+			return 1;
+		}
+		return 0;
+
+	case BOLO_OPCODE_BROADCAST:
+		requires_single_payload();
+		switch (m->payload) {
+		case BOLO_PAYLOAD_SAMPLE:
+			requires_exact_frame_count(9);
+			requires_frame(0, BOLO_FRAME_STRING, 0);
+			requires_frame(1, BOLO_FRAME_TSTAMP, 64);
+			requires_frame(2, BOLO_FRAME_UINT,   32);
+			requires_frame(3, BOLO_FRAME_UINT,   16);
+			requires_frame(4, BOLO_FRAME_FLOAT,  64);
+			requires_frame(5, BOLO_FRAME_FLOAT,  64);
+			requires_frame(6, BOLO_FRAME_FLOAT,  64);
+			requires_frame(7, BOLO_FRAME_FLOAT,  64);
+			requires_frame(8, BOLO_FRAME_FLOAT,  64);
+			return 1;
+
+		case BOLO_PAYLOAD_TALLY:
+			requires_exact_frame_count(4);
+			requires_frame(0, BOLO_FRAME_STRING, 0);
+			requires_frame(1, BOLO_FRAME_TSTAMP, 64);
+			requires_frame(2, BOLO_FRAME_UINT,   32);
+			requires_frame(3, BOLO_FRAME_UINT,   64);
+			return 1;
+
+		case BOLO_PAYLOAD_DELTA:
+			requires_exact_frame_count(4);
+			requires_frame(0, BOLO_FRAME_STRING, 0);
+			requires_frame(1, BOLO_FRAME_TSTAMP, 64);
+			requires_frame(2, BOLO_FRAME_UINT,   32);
+			requires_frame(3, BOLO_FRAME_FLOAT,  64);
+			return 1;
+
+		case BOLO_PAYLOAD_STATE:
+			/* FIXME: has some flag-based stuff to check */
+			return 0;
+
+		case BOLO_PAYLOAD_EVENT:
+			requires_exact_frame_count(3);
+			requires_frame(0, BOLO_FRAME_STRING, 0);
+			requires_frame(1, BOLO_FRAME_TSTAMP, 64);
+			requires_frame(2, BOLO_FRAME_STRING, 0);
+			return 1;
+
+		case BOLO_PAYLOAD_FACT:
+			requires_exact_frame_count(3);
+			requires_frame(0, BOLO_FRAME_STRING, 0);
+			requires_frame(1, BOLO_FRAME_STRING, 0);
+			return 1;
+
+		}
+		return 0;
+
+	case BOLO_OPCODE_FORGET:
+		requires_payloads(BOLO_PAYLOAD_SAMPLE
+		                | BOLO_PAYLOAD_TALLY
+		                | BOLO_PAYLOAD_DELTA
+		                | BOLO_PAYLOAD_STATE);
+		requires_exact_frame_count(1);
+		requires_frame(0, BOLO_FRAME_STRING, 0);
+		return 1;
+
+	case BOLO_OPCODE_REPLAY:
+		requires_one_or_more_payloads();
+		requires_exact_frame_count(0);
+		return 1;
+
+	case BOLO_OPCODE_SUBSCRIBE:
+		requires_one_or_more_payloads();
+		requires_exact_frame_count(1);
+		requires_frame(0, BOLO_FRAME_STRING, 0);
+		return 1;
+
+	default:
+		/* unrecognized opcode! */
+		return 0;
+	}
+
+	return 1;
 }

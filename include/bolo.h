@@ -98,6 +98,9 @@ typedef struct __bolo_frame   *bolo_frame_t;
 bolo_message_t
 bolo_message_unpack(const void *buf, size_t n, size_t *left);
 
+int
+bolo_message_valid(bolo_message_t m);
+
 unsigned int
 bolo_message_version(bolo_message_t m);
 
@@ -115,9 +118,6 @@ bolo_message_nframes(bolo_message_t m);
 
 unsigned int
 bolo_message_length(bolo_message_t m);
-
-unsigned int
-bolo_message_valid(bolo_message_t m);
 
 
 unsigned int
