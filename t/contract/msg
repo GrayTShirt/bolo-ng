@@ -265,7 +265,31 @@ msg_in "[BROADCAST] STATE message (2/8)",
        "    2) TSTAMP/8\n".
        "    3) STRING/15\n".
        "";
-       # FIXME: may want to tests transition broadcasts...
+
+msg_in "[BROADCAST] STATE transitional message (2/8)",
+       #------------------------------------------------
+       "1 2 c4 0008".                 # header
+       "2 008   (a=b,c=d)".           # STRING/* - qualified name
+       "0 004   4321 1234".           # UINT/4 frame
+       "6 008   0011 2233 4455 6677". # TSTAMP/8 frame
+       "2 010   (it recovered...)".   # STRING/* - qualified name
+       "6 008   0011 2233 4455 6677". # TSTAMP/8 frame
+       "a 010   (it recovered...)".   # STRING/* - qualified name
+       "",
+       #------------------------------------------------
+       "version: 1\n".
+       "opcode:  2 [BROADCAST]\n".
+       "flags:   c4 (11000100b)\n".
+       "payload: 0008 (00000000 00001000b)\n".
+       "          - STATE  (0008)\n".
+       "frames:  6\n".
+       "    0) STRING/8\n".
+       "    1) UINT/4\n".
+       "    2) TSTAMP/8\n".
+       "    3) STRING/16\n".
+       "    4) TSTAMP/8\n".
+       "    5) STRING/16\n".
+       "";
 
 msg_in "[BROADCAST] EVENT message (2/16)",
        #------------------------------------------------
