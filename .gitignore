@@ -1,22 +1,6 @@
 *.o
 
-.libs
-.deps
-*.in
-stamp-h1
-.dirstamp
-autom4te.cache
-aclocal.m4
-libtool
-build/*
 coverage
-configure
-config.log
-config.status
-config.h
-
-*.log
-*.trs
 
 /qname
 
