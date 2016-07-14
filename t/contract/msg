@@ -23,11 +23,15 @@ sub str2hex($) {
 
 my $WORKSPACE = tempdir(CLEANUP => 1);
 
+sub hexify($) {
+	$_[0] =~ s/\((.*?)\)/str2hex($1)/eg;
+	$_[0] =~ s/\s+//g;
+	return pack("H*", $_[0]);
+}
+
 sub msg_in($$$) {
 	my ($test, $in, $want) = @_;
-    $in =~ s/\((.*?)\)/str2hex($1)/eg;
-	$in =~ s/\s+//g;
-	open my $fh, ">", "$WORKSPACE/in"; print $fh pack("H*", $in); close $fh;
+	open my $fh, ">", "$WORKSPACE/in"; print $fh hexify($in); close $fh;
 
 	my $out = qx(./t/contract/r/msg-in <$WORKSPACE/in 2>&1);
 	if ($out ne $want) {
