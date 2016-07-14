@@ -40,7 +40,7 @@ struct __bolo_message {
 #define extract_header_version(h) ((BYTE((h),0) & 0xf0) >> 4)
 #define extract_header_opcode(h)   (BYTE((h),0) & 0x0f)
 #define extract_header_flags(h)    (BYTE((h),1))
-#define extract_header_payload(h) ((BYTE((h),2) >> 8) | (BYTE((h), 3)))
+#define extract_header_payload(h) ((BYTE((h),2) << 8) | (BYTE((h), 3)))
 
 #define extract_frame_final(f)     ((BYTE((f),0) & 0x80) >> 7)
 #define extract_frame_type(f)      ((BYTE((f),0) & 0x70) >> 4)
@@ -160,7 +160,7 @@ bolo_message_valid(bolo_message_t m)
 #define requires_one_or_more_payloads() \
 	do { if (m->payload == 0) return 0; } while (0)
 #define requires_payloads(p) \
-	do { if (m->payload & p != m->payload) return 0; } while (0)
+	do { if (m->payload & ~(p)) return 0; } while (0)
 
 #define requires_exact_frame_count(n) \
 	do { if (m->nframes != (n)) return 0; } while (0)
@@ -175,8 +175,8 @@ bolo_message_valid(bolo_message_t m)
 	case BOLO_OPCODE_HEARTBEAT:
 		requires_empty_payload();      /* per RFC-TSDP $4.3.1.1 */
 		requires_exact_frame_count(2); /* per RFC-TSDP $4.3.1.2 */
-		requires_frame(0, BOLO_FRAME_TSTAMP, 64);
-		requires_frame(1, BOLO_FRAME_UINT,   64);
+		requires_frame(0, BOLO_FRAME_TSTAMP, 8);
+		requires_frame(1, BOLO_FRAME_UINT,   8);
 		return 1;
 
 	case BOLO_OPCODE_SUBMIT:
@@ -185,33 +185,33 @@ bolo_message_valid(bolo_message_t m)
 		case BOLO_PAYLOAD_SAMPLE:
 			requires_min_frame_count(3);
 			requires_frame(0, BOLO_FRAME_STRING, 0);
-			requires_frame(1, BOLO_FRAME_TSTAMP, 64);
+			requires_frame(1, BOLO_FRAME_TSTAMP, 8);
 			for (i = 2; i < m->nframes; i++) {
-				requires_frame(i, BOLO_FRAME_FLOAT, 64);
+				requires_frame(i, BOLO_FRAME_FLOAT, 8);
 			}
 			return 1;
 
 		case BOLO_PAYLOAD_TALLY:
 			requires_min_max_frame_count(2, 3);
 			requires_frame(0, BOLO_FRAME_STRING, 0);
-			requires_frame(1, BOLO_FRAME_TSTAMP, 64);
+			requires_frame(1, BOLO_FRAME_TSTAMP, 8);
 			if (m->nframes == 3) {
-				requires_frame(2, BOLO_FRAME_UINT, 64);
+				requires_frame(2, BOLO_FRAME_UINT, 8);
 			}
 			return 1;
 
 		case BOLO_PAYLOAD_DELTA:
 			requires_exact_frame_count(3);
 			requires_frame(0, BOLO_FRAME_STRING, 0);
-			requires_frame(1, BOLO_FRAME_TSTAMP, 64);
-			requires_frame(2, BOLO_FRAME_FLOAT,  64);
+			requires_frame(1, BOLO_FRAME_TSTAMP, 8);
+			requires_frame(2, BOLO_FRAME_FLOAT,  8);
 			return 1;
 
 		case BOLO_PAYLOAD_STATE:
 			requires_min_max_frame_count(3, 4);
 			requires_frame(0, BOLO_FRAME_STRING, 0);
-			requires_frame(1, BOLO_FRAME_TSTAMP, 64);
-			requires_frame(2, BOLO_FRAME_UINT,   32);
+			requires_frame(1, BOLO_FRAME_TSTAMP, 8);
+			requires_frame(2, BOLO_FRAME_UINT,   4);
 			if (m->nframes == 4) {
 				requires_frame(3, BOLO_FRAME_STRING, 0);
 			}
@@ -220,7 +220,7 @@ bolo_message_valid(bolo_message_t m)
 		case BOLO_PAYLOAD_EVENT:
 			requires_exact_frame_count(3);
 			requires_frame(0, BOLO_FRAME_STRING, 0);
-			requires_frame(1, BOLO_FRAME_TSTAMP, 64);
+			requires_frame(1, BOLO_FRAME_TSTAMP, 8);
 			requires_frame(2, BOLO_FRAME_STRING, 0);
 			return 1;
 
@@ -238,45 +238,60 @@ bolo_message_valid(bolo_message_t m)
 		case BOLO_PAYLOAD_SAMPLE:
 			requires_exact_frame_count(9);
 			requires_frame(0, BOLO_FRAME_STRING, 0);
-			requires_frame(1, BOLO_FRAME_TSTAMP, 64);
-			requires_frame(2, BOLO_FRAME_UINT,   32);
-			requires_frame(3, BOLO_FRAME_UINT,   16);
-			requires_frame(4, BOLO_FRAME_FLOAT,  64);
-			requires_frame(5, BOLO_FRAME_FLOAT,  64);
-			requires_frame(6, BOLO_FRAME_FLOAT,  64);
-			requires_frame(7, BOLO_FRAME_FLOAT,  64);
-			requires_frame(8, BOLO_FRAME_FLOAT,  64);
+			requires_frame(1, BOLO_FRAME_TSTAMP, 8);
+			requires_frame(2, BOLO_FRAME_UINT,   4);
+			requires_frame(3, BOLO_FRAME_UINT,   2);
+			requires_frame(4, BOLO_FRAME_FLOAT,  8);
+			requires_frame(5, BOLO_FRAME_FLOAT,  8);
+			requires_frame(6, BOLO_FRAME_FLOAT,  8);
+			requires_frame(7, BOLO_FRAME_FLOAT,  8);
+			requires_frame(8, BOLO_FRAME_FLOAT,  8);
 			return 1;
 
 		case BOLO_PAYLOAD_TALLY:
 			requires_exact_frame_count(4);
 			requires_frame(0, BOLO_FRAME_STRING, 0);
-			requires_frame(1, BOLO_FRAME_TSTAMP, 64);
-			requires_frame(2, BOLO_FRAME_UINT,   32);
-			requires_frame(3, BOLO_FRAME_UINT,   64);
+			requires_frame(1, BOLO_FRAME_TSTAMP, 8);
+			requires_frame(2, BOLO_FRAME_UINT,   4);
+			requires_frame(3, BOLO_FRAME_UINT,   8);
 			return 1;
 
 		case BOLO_PAYLOAD_DELTA:
 			requires_exact_frame_count(4);
 			requires_frame(0, BOLO_FRAME_STRING, 0);
-			requires_frame(1, BOLO_FRAME_TSTAMP, 64);
-			requires_frame(2, BOLO_FRAME_UINT,   32);
-			requires_frame(3, BOLO_FRAME_FLOAT,  64);
+			requires_frame(1, BOLO_FRAME_TSTAMP, 8);
+			requires_frame(2, BOLO_FRAME_UINT,   4);
+			requires_frame(3, BOLO_FRAME_FLOAT,  8);
 			return 1;
 
 		case BOLO_PAYLOAD_STATE:
-			/* FIXME: has some flag-based stuff to check */
-			return 0;
+			if (m->flags & 0x40) { /* transition */
+				requires_exact_frame_count(6);
+				requires_frame(0, BOLO_FRAME_STRING, 0);
+				requires_frame(1, BOLO_FRAME_UINT,   4);
+				requires_frame(2, BOLO_FRAME_TSTAMP, 8);
+				requires_frame(3, BOLO_FRAME_STRING, 0);
+				requires_frame(4, BOLO_FRAME_TSTAMP, 8);
+				requires_frame(5, BOLO_FRAME_STRING, 0);
+
+			} else { /* non-transition (no previous state) */
+				requires_exact_frame_count(4);
+				requires_frame(0, BOLO_FRAME_STRING, 0);
+				requires_frame(1, BOLO_FRAME_UINT,   4);
+				requires_frame(2, BOLO_FRAME_TSTAMP, 8);
+				requires_frame(3, BOLO_FRAME_STRING, 0);
+			}
+			return 1;
 
 		case BOLO_PAYLOAD_EVENT:
 			requires_exact_frame_count(3);
 			requires_frame(0, BOLO_FRAME_STRING, 0);
-			requires_frame(1, BOLO_FRAME_TSTAMP, 64);
+			requires_frame(1, BOLO_FRAME_TSTAMP, 8);
 			requires_frame(2, BOLO_FRAME_STRING, 0);
 			return 1;
 
 		case BOLO_PAYLOAD_FACT:
-			requires_exact_frame_count(3);
+			requires_exact_frame_count(2);
 			requires_frame(0, BOLO_FRAME_STRING, 0);
 			requires_frame(1, BOLO_FRAME_STRING, 0);
 			return 1;
@@ -330,31 +345,33 @@ s_opcode_name(unsigned int opcode)
 	return OPCODE_NAMES[opcode];
 }
 
-static char binfmt[65];
+static char binfmt[8 * (8 + 1) + 1];
 static const char*
 s_in_binary(unsigned long i, int size)
 {
-	int off = 24;
+	int off = (8 * (8 + 1));
 
 	if (size > 4) {
+		off = 0;
 		memcpy(binfmt, "<bad size>", 11);
 		return binfmt;
 	}
 
-	binfmt[64] = '\0';
+	binfmt[8 * (8 + 1)] = '\0';
 	while (size-- > 0) {
-		binfmt[off + 0] = (i & 0x01) ? '1' : '0';
-		binfmt[off + 1] = (i & 0x02) ? '1' : '0';
-		binfmt[off + 2] = (i & 0x04) ? '1' : '0';
-		binfmt[off + 3] = (i & 0x08) ? '1' : '0';
+		off -= (8 + 1);
+		binfmt[off + 0] = ' ';
+		binfmt[off + 8] = (i & 0x01) ? '1' : '0';
+		binfmt[off + 7] = (i & 0x02) ? '1' : '0';
+		binfmt[off + 6] = (i & 0x04) ? '1' : '0';
+		binfmt[off + 5] = (i & 0x08) ? '1' : '0';
 		binfmt[off + 4] = (i & 0x10) ? '1' : '0';
-		binfmt[off + 5] = (i & 0x20) ? '1' : '0';
-		binfmt[off + 6] = (i & 0x40) ? '1' : '0';
-		binfmt[off + 7] = (i & 0x80) ? '1' : '0';
-		off -= 8;
+		binfmt[off + 3] = (i & 0x20) ? '1' : '0';
+		binfmt[off + 2] = (i & 0x40) ? '1' : '0';
+		binfmt[off + 1] = (i & 0x80) ? '1' : '0';
 		i = i >> 8;
 	}
-	return binfmt + off;
+	return binfmt + off + 1;
 }
 
 void
@@ -363,15 +380,10 @@ bolo_message_fdump(FILE *io, bolo_message_t m)
 	int i;
 	bolo_frame_t f;
 
-	fprintf(io, "version: %d\n"
-	            "opcode:  %d [%s]\n"
-	            "flags:   %02x (%sb)\n"
-	            "payload: %04x (%sb)\n",
-			m->version,
-			m->opcode,  s_opcode_name(m->opcode),
-			m->flags,   s_in_binary(m->flags,   sizeof(m->flags)),
-			m->payload, s_in_binary(m->payload, sizeof(m->payload)));
-
+	fprintf(io, "version: %d\n",         m->version);
+	fprintf(io, "opcode:  %d [%s]\n",    m->opcode, s_opcode_name(m->opcode));
+	fprintf(io, "flags:   %02x (%sb)\n", m->flags,   s_in_binary(m->flags,   sizeof(m->flags)));
+	fprintf(io, "payload: %04x (%sb)\n", m->payload, s_in_binary(m->payload, sizeof(m->payload)));
 	if (m->payload & BOLO_PAYLOAD_SAMPLE) fprintf(io, "          - SAMPLE (%04x)\n", BOLO_PAYLOAD_SAMPLE);
 	if (m->payload & BOLO_PAYLOAD_TALLY)  fprintf(io, "          - TALLY  (%04x)\n", BOLO_PAYLOAD_TALLY);
 	if (m->payload & BOLO_PAYLOAD_DELTA)  fprintf(io, "          - DELTA  (%04x)\n", BOLO_PAYLOAD_DELTA);
@@ -380,14 +392,14 @@ bolo_message_fdump(FILE *io, bolo_message_t m)
 	if (m->payload & BOLO_PAYLOAD_FACT)   fprintf(io, "          - FACT   (%04x)\n", BOLO_PAYLOAD_FACT);
 
 	fprintf(io, "frames:  %d\n", m->nframes);
-	for (f = m->frames; f; f = f->next, i++) {
-		fprintf(io, "  [% 2d] ", i);
+	for (i = 0, f = m->frames; f; f = f->next, i++) {
+		fprintf(io, "   % 2d) ", i);
 		switch (f->type) {
-		case BOLO_FRAME_UINT:    fprintf(io, "UINT/%d\n",   f->length);
-		case BOLO_FRAME_FLOAT:   fprintf(io, "FLOAT/%d\n",  f->length);
-		case BOLO_FRAME_STRING:  fprintf(io, "STRING/%d\n", f->length);
-		case BOLO_FRAME_TSTAMP:  fprintf(io, "TSTAMP/%d\n", f->length);
-		case BOLO_FRAME_NIL:     fprintf(io, "NIL/%d\n",    f->length);
+		case BOLO_FRAME_UINT:    fprintf(io, "UINT/%d\n",   f->length); break;
+		case BOLO_FRAME_FLOAT:   fprintf(io, "FLOAT/%d\n",  f->length); break;
+		case BOLO_FRAME_STRING:  fprintf(io, "STRING/%d\n", f->length); break;
+		case BOLO_FRAME_TSTAMP:  fprintf(io, "TSTAMP/%d\n", f->length); break;
+		case BOLO_FRAME_NIL:     fprintf(io, "NIL/%d\n",    f->length); break;
 		default: fprintf(io, "\?\?\?(%02x)/%d\n", f->type, f->length);
 		}
 	}

@@ -44,18 +44,21 @@ CLEAN_FILES += $(MSG_OBJ) $(MSG_FUZZ)
 
 
 # scripts that perform Contract Testing.
-CONTRACT_TEST_SCRIPTS := t/contract/qname
+CONTRACT_TEST_SCRIPTS := t/contract/qname \
+                         t/contract/msg
 
 # binaries that the Contract Tests run.
 CONTRACT_TEST_BINS := t/contract/r/qname-string \
                       t/contract/r/qname-equiv \
-                      t/contract/r/qname-match
+                      t/contract/r/qname-match \
+                      t/contract/r/msg-in
 CLEAN_FILES   += $(CONTRACT_TEST_BINS)
 
 contract-tests: $(CONTRACT_TEST_BINS)
 t/contract/r/qname-string: t/contract/r/qname-string.o $(QNAME_OBJ)
 t/contract/r/qname-equiv:  t/contract/r/qname-equiv.o  $(QNAME_OBJ)
 t/contract/r/qname-match:  t/contract/r/qname-match.o  $(QNAME_OBJ)
+t/contract/r/msg-in:       t/contract/r/msg-in.o       $(MSG_OBJ)
 
 
 # binaries that the Fuzz Tests run.
