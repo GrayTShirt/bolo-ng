@@ -77,7 +77,7 @@ test: tests
 
 
 %.fuzz.o: %.c
-	$(AFLCC) $(CFLAGS) -c -o $@ $<
+	$(AFLCC) $(CPPFLAGS) $(CFLAGS) -c -o $@ $<
 
 
 .PHONY: all clean
