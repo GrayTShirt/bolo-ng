@@ -8,7 +8,7 @@ CC       ?= clang
 AFLCC    ?= afl-clang
 TABLEGEN := util/tablegen
 
-CFLAGS += -I./include
+CPPFLAGS += -I./include
 
 default: all
 all:
@@ -34,7 +34,7 @@ CLEAN_FILES += $(QNAME_OBJ) $(QNAME_FUZZ)
 src/qname_chars.inc: src/qname_chars.tbl $(TABLEGEN)
 	$(TABLEGEN) >$@ <$<
 src/qname.o: src/qname.c $(CORE_H) src/qname_chars.inc
-	$(CC) $(CFLAGS) -o $@ -c $<
+	$(CC) $(CPPFLAGS) $(CFLAGS) -o $@ -c $<
 
 # source files that comprise the Message implementation.
 MSG_SRC  := src/msg.c
