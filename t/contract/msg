@@ -21,8 +21,7 @@ sub str2hex($) {
 	return $x;
 }
 
-my $WORKSPACE = tempdir(UNLINK => 1);
-ok "working in $WORKSPACE";
+my $WORKSPACE = tempdir(CLEANUP => 1);
 
 sub msg_in($$$) {
 	my ($test, $in, $want) = @_;

@@ -73,7 +73,7 @@ t/fuzz/r/msg:   t/fuzz/r/msg.o   $(MSG_FUZZ)
 
 tests: $(CONTRACT_TEST_BINS)
 test: tests
-	$(CONTRACT_TEST_SCRIPTS)
+	for test in $(CONTRACT_TEST_SCRIPTS); do echo $$test; $$test; echo; done
 
 
 %.fuzz.o: %.c
