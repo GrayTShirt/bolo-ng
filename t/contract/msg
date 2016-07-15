@@ -21,13 +21,13 @@ sub str2hex($) {
 	return $x;
 }
 
-my $WORKSPACE = tempdir(CLEANUP => 1);
-
 sub hexify($) {
 	$_[0] =~ s/\((.*?)\)/str2hex($1)/eg;
 	$_[0] =~ s/\s+//g;
 	return pack("H*", $_[0]);
 }
+
+my $WORKSPACE = tempdir(CLEANUP => 1);
 
 sub msg_in($$$) {
 	my ($test, $in, $want) = @_;

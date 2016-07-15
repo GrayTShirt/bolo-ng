@@ -77,10 +77,11 @@ bolo_message_unpack(const void *buf, size_t n, size_t *left)
 	/* extract the frames */
 	if (m->opcode == BOLO_OPCODE_REPLAY) {
 		/* REPLAY has no frames ... */
+		m->complete = 1;
 		return m;
 	}
 
-	while (*left > 2) { /* have enough for a header */
+	while (*left >= 2) { /* have enough for a header */
 		bolo_frame_t f;
 		unsigned short len = extract_frame_length(buf);
 		if (len > *left - 2) {
@@ -146,6 +147,10 @@ bolo_message_valid(bolo_message_t m)
 	unsigned int type, len;
 
 	if (!m) {
+		return 0;
+	}
+
+	if (!m->complete) {
 		return 0;
 	}
 
