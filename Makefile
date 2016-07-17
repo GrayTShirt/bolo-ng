@@ -69,6 +69,9 @@ t/contract/r/qname-match:  t/contract/r/qname-match.o  $(QNAME_OBJ)
 t/contract/r/msg-in:       t/contract/r/msg-in.o       $(MSG_OBJ)
 t/contract/r/ring:         t/contract/r/ring.o         $(RING_OBJ)
 
+check-contract: $(CONTRACT_TEST_BINS)
+	for test in $(CONTRACT_TEST_SCRIPTS); do echo $$test; $$test; echo; done
+
 
 # scripts that perform Memory Testing.
 MEM_TEST_SCRIPTS := t/mem/ring
@@ -79,7 +82,8 @@ CLEAN_FILES   += $(MEM_TEST_BINS)
 
 mem-tests: $(MEM_TEST_BINS)
 t/mem/r/ring: t/mem/r/ring.c $(RING_OBJ)
-mem-test: mem-tests
+
+check-mem: mem-tests
 	for test in $(MEM_TEST_SCRIPTS); do echo $$test; $$test; echo; done
 
 
@@ -94,14 +98,11 @@ t/fuzz/r/qname: t/fuzz/r/qname.o $(QNAME_FUZZ)
 t/fuzz/r/msg:   t/fuzz/r/msg.o   $(MSG_FUZZ)
 t/fuzz/r/ring:  t/fuzz/r/ring.o  $(RING_FUZZ)
 
-
-tests: $(CONTRACT_TEST_BINS)
-test: tests
-	for test in $(CONTRACT_TEST_SCRIPTS); do echo $$test; $$test; echo; done
-
-
 %.fuzz.o: %.c
 	$(AFLCC) $(CPPFLAGS) $(CFLAGS) -c -o $@ $<
 
+check: check-contract
+test: check
 
-.PHONY: all clean
+
+.PHONY: all clean test check check-mem
