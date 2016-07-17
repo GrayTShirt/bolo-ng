@@ -8,7 +8,9 @@ coverage
 /t/contract/r/qname-match
 /t/contract/r/qname-string
 /t/contract/r/msg-in
+/t/contract/r/ring
 
 /t/fuzz/r/qname
 /t/fuzz/r/msg
+/t/fuzz/r/ring
 /t/fuzz/findings

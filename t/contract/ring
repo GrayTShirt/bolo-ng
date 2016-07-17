@@ -1,0 +1,78 @@
+#!/usr/bin/perl
+use strict;
+use warnings;
+use File::Temp qw/tempdir/;
+
+my $rc = 0;
+sub ok($) {
+	print "ok ", $_[0], "\n";
+}
+sub notok($) {
+	print "not ok ", $_[0], "\n";
+	$rc = 1;
+}
+
+my $WORKSPACE = tempdir(CLEANUP => 1);
+
+sub ring($$$) {
+	my ($test, $args, $want) = @_;
+	open my $fh, "-|", './t/contract/r/ring', @$args;
+	my $got = do { local $/; <$fh> };
+	close $fh;
+
+	if ($got ne $want) {
+		notok "${test} - output did not match expected:";
+		open $fh, ">", "$WORKSPACE/got";  print $fh "GOT\n";    print $fh $got;  close $fh;
+		open $fh, ">", "$WORKSPACE/want"; print $fh "WANTED\n"; print $fh $want; close $fh;
+		print qx(diff -ay $WORKSPACE/got $WORKSPACE/want 2>&1);
+	} else {
+		ok $test;
+	}
+}
+
+ring "base case", ['+a'], <<EOF;
+ring [0] - [1] (capacity 0/16 b) []
+ring [0] - [2] (capacity 1/16 b) [a]
+EOF
+
+ring "multi-character base case", ['+abcd'], <<EOF;
+ring [0] - [1] (capacity 0/16 b) []
+ring [0] - [5] (capacity 4/16 b) [abcd]
+EOF
+
+ring "multi-argument case", ['+a', '+b', '+c'], <<EOF;
+ring [0] - [1] (capacity 0/16 b) []
+ring [0] - [2] (capacity 1/16 b) [a]
+ring [0] - [3] (capacity 2/16 b) [ab]
+ring [0] - [4] (capacity 3/16 b) [abc]
+EOF
+
+ring "multi-argument multi-character case", ["+Hello, ", "+World!"], <<EOF;
+ring [0] - [1] (capacity 0/16 b) []
+ring [0] - [8] (capacity 7/16 b) [Hello, ]
+ring [0] - [14] (capacity 13/16 b) [Hello, World!]
+EOF
+
+ring "move base case", ['+abcde', "-\x03"], <<EOF;
+ring [0] - [1] (capacity 0/16 b) []
+ring [0] - [6] (capacity 5/16 b) [abcde]
+buf [abc]
+ring [3] - [6] (capacity 2/16 b) [de]
+EOF
+
+ring "move underflow case", ['+abcde', "-\x0a"], <<EOF;
+ring [0] - [1] (capacity 0/16 b) []
+ring [0] - [6] (capacity 5/16 b) [abcde]
+buf [abcde]
+ring [5] - [6] (capacity 0/16 b) []
+EOF
+
+ring "wraparound case", ['+a long string', "-\x07", "+ concat"], <<EOF;
+ring [0] - [1] (capacity 0/16 b) []
+ring [0] - [14] (capacity 13/16 b) [a long string]
+buf [a long ]
+ring [7] - [14] (capacity 6/16 b) [string]
+ring [7] - [5] (capacity 13/16 b) [string concat]
+EOF
+
+exit $rc;

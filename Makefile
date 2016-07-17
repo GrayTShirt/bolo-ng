@@ -42,16 +42,24 @@ MSG_OBJ  := $(MSG_SRC:.c=.o)
 MSG_FUZZ := $(MSG_SRC:.c=.fuzz.o)
 CLEAN_FILES += $(MSG_OBJ) $(MSG_FUZZ)
 
+# source files that comprise the Ring Buffer implementation.
+RING_SRC  := src/ring.c
+RING_OBJ  := $(RING_SRC:.c=.o)
+RING_FUZZ := $(RING_SRC:.c=.fuzz.o)
+CLEAN_FILES += $(RING_OBJ) $(RING_FUZZ)
+
 
 # scripts that perform Contract Testing.
 CONTRACT_TEST_SCRIPTS := t/contract/qname \
-                         t/contract/msg
+                         t/contract/msg \
+                         t/contract/ring
 
 # binaries that the Contract Tests run.
 CONTRACT_TEST_BINS := t/contract/r/qname-string \
                       t/contract/r/qname-equiv \
                       t/contract/r/qname-match \
-                      t/contract/r/msg-in
+                      t/contract/r/msg-in \
+                      t/contract/r/ring
 CLEAN_FILES   += $(CONTRACT_TEST_BINS)
 
 contract-tests: $(CONTRACT_TEST_BINS)
@@ -59,16 +67,19 @@ t/contract/r/qname-string: t/contract/r/qname-string.o $(QNAME_OBJ)
 t/contract/r/qname-equiv:  t/contract/r/qname-equiv.o  $(QNAME_OBJ)
 t/contract/r/qname-match:  t/contract/r/qname-match.o  $(QNAME_OBJ)
 t/contract/r/msg-in:       t/contract/r/msg-in.o       $(MSG_OBJ)
+t/contract/r/ring:         t/contract/r/ring.o         $(RING_OBJ)
 
 
 # binaries that the Fuzz Tests run.
 FUZZ_TEST_BINS := t/fuzz/r/qname \
-                  t/fuzz/r/msg
+                  t/fuzz/r/msg \
+                  t/fuzz/r/ring
 CLEAN_FILES   += $(FUZZ_TEST_BINS)
 
 fuzz-tests: $(FUZZ_TEST_BINS)
 t/fuzz/r/qname: t/fuzz/r/qname.o $(QNAME_FUZZ)
 t/fuzz/r/msg:   t/fuzz/r/msg.o   $(MSG_FUZZ)
+t/fuzz/r/ring:  t/fuzz/r/ring.o  $(RING_FUZZ)
 
 
 tests: $(CONTRACT_TEST_BINS)
