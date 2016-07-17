@@ -409,3 +409,46 @@ bolo_message_fdump(FILE *io, bolo_message_t m)
 		}
 	}
 }
+
+unsigned int
+bolo_message_version(bolo_message_t m)
+{
+	return m->version;
+}
+
+unsigned int
+bolo_message_opcode(bolo_message_t m)
+{
+	return m->opcode;
+}
+
+unsigned int
+bolo_message_flags(bolo_message_t m)
+{
+	return m->flags;
+}
+
+unsigned int
+bolo_message_payload(bolo_message_t m)
+{
+	return m->payload;
+}
+
+unsigned int
+bolo_message_nframes(bolo_message_t m)
+{
+	return m->nframes;
+}
+
+
+unsigned int
+bolo_frame_type(bolo_frame_t f)
+{
+	return f->type;
+}
+
+unsigned int
+bolo_frame_length(bolo_frame_t f)
+{
+	return f->length;
+}

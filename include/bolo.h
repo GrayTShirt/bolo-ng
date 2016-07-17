@@ -120,18 +120,12 @@ bolo_message_payload(bolo_message_t m);
 unsigned int
 bolo_message_nframes(bolo_message_t m);
 
-unsigned int
-bolo_message_length(bolo_message_t m);
-
 
 unsigned int
 bolo_frame_type(bolo_frame_t f);
 
 unsigned int
 bolo_frame_length(bolo_frame_t f);
-
-unsigned int
-bolo_frame_isfinal(bolo_frame_t f);
 
 
 #endif
