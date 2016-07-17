@@ -1,0 +1,2 @@
+#!/bin/bash
+exec ./t/mem/vg/run ./t/mem/r/ring

@@ -1,0 +1,8 @@
+#!/bin/sh
+# vim:et
+
+exec valgrind \
+       --leak-check=full \
+       --suppressions=./t/mem/vg/objc.supp \
+       $*
+       #--show-leak-kinds=all \

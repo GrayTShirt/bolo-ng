@@ -14,3 +14,5 @@ coverage
 /t/fuzz/r/msg
 /t/fuzz/r/ring
 /t/fuzz/findings
+
+t/mem/r/ring

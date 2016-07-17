@@ -70,6 +70,19 @@ t/contract/r/msg-in:       t/contract/r/msg-in.o       $(MSG_OBJ)
 t/contract/r/ring:         t/contract/r/ring.o         $(RING_OBJ)
 
 
+# scripts that perform Memory Testing.
+MEM_TEST_SCRIPTS := t/mem/ring
+
+# binaries that the Memory Tests run.
+MEM_TEST_BINS := t/mem/r/ring
+CLEAN_FILES   += $(MEM_TEST_BINS)
+
+mem-tests: $(MEM_TEST_BINS)
+t/mem/r/ring: t/mem/r/ring.c $(RING_OBJ)
+mem-test: mem-tests
+	for test in $(MEM_TEST_SCRIPTS); do echo $$test; $$test; echo; done
+
+
 # binaries that the Fuzz Tests run.
 FUZZ_TEST_BINS := t/fuzz/r/qname \
                   t/fuzz/r/msg \
